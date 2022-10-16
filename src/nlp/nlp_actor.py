@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from transformers import pipeline
 
 from src.world import Actor, Message, Action, Location
@@ -8,57 +8,64 @@ class NLPActor(Actor):
     def get_actions(self, messages: [Message]) -> List[Action]:
         pass
 
-    def __init__(self, location: Location, name: str):
-        super().__init__(location, name)
+    def __init__(self, location: Location):
         self.generator = pipeline(task="text-generation")
         self.birth_location = location
-        self.bio: Optional[str] = None
+        name = self.create_name()
+        super().__init__(location, name)
+        self.descriptors = self.get_descriptors()
+        self.character_profile = self.get_character_profile()
 
-    def set_bio(self):
-        location = self.birth_location
-        name = self.name
-        township = location.parent_feature.name
-        population = location.parent_feature.population
-
-        bio_prompt = f"""{name} is a general of the armies of {township} tasked with defending his homeland of {township}, which has a population of {population}.
-Write a story about {name}. 
------------------------------
-"""
-
-        bio_prompt_len = len(bio_prompt)
-
-        bio_prompt += f"""{name} was born"""
-
-        self.bio = self.generator(
-            bio_prompt,
-            max_length=150,
+    def ask_generator(self, prompt: str, length: int, hint: str = "", n: int = 1) -> Union[str, List[str]]:
+        outs = self.generator(
+            prompt + hint,
+            max_length=length,
             early_stopping=True,
-            # num_beams=5,
             do_sample=True,
             top_k=0,
-        )[0]['generated_text'][bio_prompt_len:]
+            num_return_sequences=n,
+        )
 
-    def respond_to_order(self, message: Message) -> Message:
-        order_prompt = f"""{self.bio}
------------------------------
-Later that year, {message.sender.name} wrote to {message.recipient.name}. The letter is transcribed below:
------------------------------
-{message.contents}
------------------------------
-{message.recipient.name} responded to the letter immediately: 
------------------------------
-"""
-        order_prompt_len = len(order_prompt)
-        order_prompt += f"""Dear {message.sender.name},"""
+        rets = [out['generated_text'][len(prompt):] for out in outs]
+        if n == 1:
+            return rets[0]
+        else:
+            return rets
 
-        return_contents = self.generator(
-            order_prompt,
-            max_length=250,
-            early_stopping=True,
-            # num_beams=5,
-            do_sample=True,
-            top_k=0,
-        )[0]['generated_text'][order_prompt_len:]
+    def generate_summary(self, text: str, length: int, hint : str = "") -> str:
+        return self.ask_generator(
+            prompt=f"Here is a text and a short summary.\n#Text:{text}\n#Short Summary:",
+            length=length,
+            hint=hint
+        ).split("\n")[0]
 
-        return Message(source=self.location, destination=message.source, sender=self, recipient=message.sender,
-                       contents=return_contents)
+    def create_name(self) -> str:
+        output = self.ask_generator(
+            prompt=f"The name of the warrior general from {self.birth_location.parent_feature.name} was \"",
+            length=20)
+        return output.split("\"")[0]
+
+    def get_descriptors(self) -> List[str]:
+        output = self.ask_generator(
+            prompt=f"The three best words that describe the warrior general {self.name} are wise, brave, and",
+            length=30,
+            n=10)
+        adjectives = []
+        for rest in output:
+            rest = rest.replace("!", ".")
+            rest = rest.replace(";", ".")
+            rest = rest.replace(",", ".")
+            rest = rest.replace(":", ".")
+            rest = rest.replace("--", ".")
+            rest = rest.replace("\n", ".")
+            rest = rest.replace("?", ".")
+            rest = rest.replace("—", ".")
+            adjectives.append(rest.split(".")[0].strip().strip("_"))
+
+        return adjectives
+
+    def get_character_profile(self):
+        repetitive_character_profile = f"{self.name} is "
+        for adjective in self.descriptors:
+            repetitive_character_profile += f"{adjective}, "
+        return self.generate_summary(repetitive_character_profile, 200, hint=self.name)
