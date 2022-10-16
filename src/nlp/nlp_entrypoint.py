@@ -42,4 +42,4 @@ print("Replies")
 print([my_actor.reply_to_message(message, obey=False) for my_actor in my_actors])
 
 print("Images")
-print([my_actor.character_profile_image for my_actor in my_actors])
+print([my_actor.character_profile_image_url for my_actor in my_actors])
