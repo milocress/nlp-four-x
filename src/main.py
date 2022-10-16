@@ -41,12 +41,12 @@ def main():
     pygame.freetype.init()
 
     pygame.display.set_caption('Quick Start')
-    screen = pygame.display.set_mode((1000, 800))
+    screen = pygame.display.set_mode((1000, 900))
 
-    background = pygame.Surface((1000, 800))
+    background = pygame.Surface((1000, 900))
     background.fill(pygame.Color('lightskyblue3'))
 
-    manager = pygame_gui.UIManager((1000, 800))
+    manager = pygame_gui.UIManager((1000, 900))
     ui = UI(manager)
     ui.set_actor_name_list(simulation.get_actors())
 

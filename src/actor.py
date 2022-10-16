@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Dict
-from src.nlp.gpt_order_parsing import is_movement_order
+from src.nlp.gpt_order_parsing import is_movement_order, is_occupation_order
 from src.world import Location, Position, Adjacency
 
 
@@ -26,6 +26,10 @@ class Message:
 class Action:
     pass
 
+class Occupy(Action):
+    def __init__(self):
+        pass
+
 class Movement(Action):
     def __init__(self, destination: Location, troop_commitment: int):
         self.destination = destination
@@ -33,9 +37,9 @@ class Movement(Action):
 
 
 class Dispatch(Action):
-    def __init__(self, message: Message):
-        self.message = message
-
+    def __init__(self, reply: str, recipient: Actor):
+        self.reply = reply
+        self.recipient = recipient
 
 class Actor:
     def __init__(self, location: Location, name: str):
@@ -67,7 +71,7 @@ class Actor:
     def move_with_troops(self, destination: Location, num_troops: int) -> None:
         raise NotImplementedError
 
-    def dispatch(self, message: Message) -> None:
+    def dispatch(self, reply: str, recipient: Actor) -> None:
         raise NotImplementedError
 
     def get_actions(self) -> List[Action]:
@@ -76,11 +80,16 @@ class Actor:
         actions = []
         for message in self.pending_messages:
             is_motion_order = is_movement_order(message.contents)
-            if is_motion_order:
+            occupation_order = is_occupation_order(message.contents)
+
+            if is_motion_order and not occupation_order:
                 print("ordered to move!")
                 actions.append(Movement(message.loc_map["#0"], 0))
+            elif occupation_order:
+                actions.append(Occupy())
             else:
                 print("not ordered to move")
+
         self.pending_messages = []
         return actions
 

@@ -1,9 +1,12 @@
-from typing import Set, List
+from typing import Set, List, Dict
 
-from src.actor import Actor, Action, Movement, Message
+import pygame
+
+from src.actor import Actor, Action, Movement, Message, Occupy, Dispatch
 from src.board import Board
+from src.events import RECV_MESSAGE_EVENT
 from src.nlp.nlp_actor import NLPActor
-from src.world import Position
+from src.world import Position, Location
 
 
 class Simulation:
@@ -14,6 +17,8 @@ class Simulation:
         self.actors = []
         self.board: Board = Board(10, 10)
         self.gen_actors()
+        self.occupied_tiles: Dict[Location, bool] = {}
+        self.inbox = ""
 
         self.time: int = 0
         self.messages: Set[Message] = set()
@@ -22,6 +27,10 @@ class Simulation:
         # TODO fix static position assumptions
         curr_loc = source.position.static_position
         final_dest_est = self.estimate_loc_of_actor(recipient).static_position
+        if final_dest_est == curr_loc:
+            return Message(curr_loc, final_dest_est, source, recipient, self.time,
+                           contents, loc_map)
+
         first_step = self.board.get_first_step(curr_loc, final_dest_est)
         return Message(curr_loc, first_step.destination, source, recipient, self.time + first_step.distance, contents, loc_map)
 
@@ -52,6 +61,9 @@ class Simulation:
         self.player = Actor(self.board.coord_to_feature[(5, 5)].nexus_location, "player")
         self.actors.append(self.player)
 
+        self.name_to_actor[self.player.name] = self.player
+
+
         actor1 = NLPActor(self.board.coord_to_feature[(6, 6)].nexus_location)
         self.actors.append(actor1)
 
@@ -79,6 +91,18 @@ class Simulation:
                     # message has arrived:
                     print("recipient gets message!!")
                     print(message.contents)
+
+                    if message.recipient is self.player:
+                        print("player gets letter")
+                        self.inbox = self.inbox + "<br> You've received: " + "\"" + message.contents  + "\"" + " from " + message.sender.name
+
+                        event = pygame.event.Event(RECV_MESSAGE_EVENT, {"inbox": True})
+                        print(event)
+                        print(event.type == pygame.USEREVENT)
+                        print(event.inbox)
+                        pygame.event.post(event)
+
+
                     message.recipient.receive_message(message)
                 else:
                     message.source = message.destination
@@ -116,12 +140,19 @@ class Simulation:
                 else:
                     print("done movement")
 
-    def handle_actions(self, actor, actions: List[Action]):
+    def handle_actions(self, actor: Actor, actions: List[Action]):
         for action in actions:
             if isinstance(action, Movement):
                 path, dist = self.board.get_path(actor.position.static_position, action.destination)
                 actor.set_path(path[1:])
                 actor.move(path[0], self.time + path[0].distance)
+            if isinstance(action, Occupy):
+                print("handling occupy order")
+                self.occupied_tiles[actor.position.static_position] = True
+                self.board.get_hex_from_feature(actor.position.static_position.parent_feature).colour = pygame.Color('blue')
+            if isinstance(action, Dispatch):
+                print("processing dispatch")
+                self.messages.add(self.get_message(actor, action.recipient, action.reply))
 
     def get_actors(self):
         return self.actors
@@ -134,3 +165,8 @@ class Simulation:
             return self.location_estimates[actor]
         else:
             return None
+
+    def is_hex_occupied(self, hex):
+        loc = self.board.get_feature_from_hex(hex).nexus_location
+        if loc in self.occupied_tiles:
+            return self.occupied_tiles[hex]
