@@ -3,12 +3,12 @@ from typing import List
 import pygame
 import pygame_gui
 
+from src.events import RECV_MESSAGE_EVENT
 from src.simulation import Simulation
 
 
 class Actors(object):
     pass
-
 
 class UI:
     def __init__(self, manager):
@@ -33,6 +33,11 @@ class UI:
                                                          text='Send Message',
                                                          manager=manager)
 
+        self.inbox = pygame_gui.elements.ui_text_box.UITextBox("",
+                                                                       relative_rect=pygame.Rect((50, 810), (800, 80)),
+                                                                       manager=manager)
+
+
     def handleUIEvent(self, event, simulation: Simulation):
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == self.advance_day_button:
@@ -42,6 +47,13 @@ class UI:
                 print("Send Message")
 
                 simulation.add_player_message(self.recipient_select.get_single_selection(), self.command_entry.text)
+
+        if event.type == RECV_MESSAGE_EVENT:
+            print("inner")
+            print(event)
+            if event.inbox:
+                print("recv message event")
+                self.inbox.set_text(simulation.inbox)
 
     def get_actor_list(actors):
         text = ""

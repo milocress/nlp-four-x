@@ -14,10 +14,10 @@ class NLPActor(Actor):
         self.birth_location = location
         name = self.create_name()
         super().__init__(location, name)
-        self.pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_type=torch.float16,
-                                                            revision="fp16")
-        prompt = "a photo of an astronaut riding a horse on mars"
-        image = self.pipe(prompt).images[0]
+        # self.pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_type=torch.float16,
+        #                                                     revision="fp16")
+        # prompt = "a photo of an astronaut riding a horse on mars"
+        # image = self.pipe(prompt).images[0]
         self.descriptors = self.get_descriptors()
         self.character_profile = self.get_character_profile()
 

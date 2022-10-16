@@ -13,6 +13,44 @@ openai.organization = "org-05vQQXUzgb3nMqOdGrdoy9au"
 openai.api_key = os.getenv("OPENAI_API_KEY")
 openai.Model.list()
 
+
+def is_occupation_order(text):
+    if len(text) > 1000:
+        print("We wish we could afford this")
+
+    prompt = """
+Is it an occupation order? 
+
+"occupy your current location": yes
+"establish control of the province": yes 
+"take the current city": yes 
+"occupy the current province": yes 
+"stay put for the moment in #1": no 
+"how are you?": no 
+"attack #2": no 
+"wait for more instructions.": no
+"""
+
+    prompt += "\"" + text + "\": "
+
+    # print(prompt)
+
+    res = openai.Completion.create(
+        model="text-davinci-002",
+        prompt=prompt,
+        max_tokens=1,
+        temperature=0
+    )
+
+    # print(res)
+    #
+    # print()
+
+    text_res: str = res["choices"][0]["text"]
+
+    return "yes" in text_res
+
+
 def is_movement_order(text):
     if len(text) > 1000:
         print("We wish we could afford this")
