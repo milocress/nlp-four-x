@@ -14,7 +14,7 @@ homeland = Location(
     name="Mordor"
 )
 
-my_actors = [NLPActor(homeland) for _ in range(10)]
+my_actors = [NLPActor(homeland) for _ in range(2)]
 
 me = Actor(homeland, "Strackus")
 
@@ -39,4 +39,7 @@ print("Profiles")
 print([my_actor.character_profile for my_actor in my_actors])
 
 print("Replies")
-print([my_actor.reply_to_message(message) for my_actor in my_actors])
+print([my_actor.reply_to_message(message, obey=False) for my_actor in my_actors])
+
+print("Images")
+print([my_actor.character_profile_image for my_actor in my_actors])

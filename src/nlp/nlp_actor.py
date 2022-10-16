@@ -1,7 +1,8 @@
 from typing import List, Union
 from transformers import pipeline
-from diffusers import StableDiffusionPipeline
-import torch
+import replicate
+import requests
+import io
 
 from src.actor import Actor, Message, Action, Movement, Occupy, Dispatch
 from src.nlp.gpt_order_parsing import is_movement_order, is_occupation_order
@@ -16,6 +17,7 @@ class NLPActor(Actor):
         super().__init__(location, name)
         self.descriptors = self.get_descriptors()
         self.character_profile = self.get_character_profile()
+        self.character_profile_image = self.get_character_profile_image()
 
     def ask_generator(self, prompt: str, length: int, hint: str = "", n: int = 1) -> Union[str, List[str]]:
         outs = self.generator(
@@ -45,18 +47,18 @@ class NLPActor(Actor):
             prompt=prompt,
             length=length,
             hint=hint,
-            n=4
+            n=5
         ), key=len)[-2].split("\n")[0]
 
-    def reply_to_message(self, message: Message) -> str:
-        def make_prompt(input, output=""):
-            return f"\n#Message:{input}\n#Response from {self.name}:{output}"
+    def reply_to_message(self, message: Message, obey: bool) -> str:
+        def make_prompt(input, output="", should_obey=True):
+            return f"\n#Message:{input}\n#Response type:{'obey' if should_obey else 'disobey'}\n#Response from {self.name}:{output}"
         prompt = f"Context: {self.character_profile}"
         prompt += "Here are messages and their respective responses\n"
-        prompt += make_prompt("Go attack #1", f"Dear General {message.sender.name}, it would be my honor to aid your forces. I will obey your order with duty and honor.")
-        prompt += make_prompt("Stay put", f"Dear General {message.sender.name}, I obey your commands as if they were the last breath of a dying brother.")
-        prompt += make_prompt("Go and attack #1", f"Dear General {message.sender.name}, I regret that my conscience compels me to disobey.")
-        prompt += make_prompt(input=message.contents)
+        prompt += make_prompt("Go attack #1", f"Dear General {message.sender.name}, it would be my honor to aid your forces. I will obey your order with duty and honor.", should_obey=True)
+        prompt += make_prompt("Stay put", f"Dear General {message.sender.name}, I obey your commands as if they were the last breath of a dying brother.", should_obey=True)
+        prompt += make_prompt("Go and attack #1", f"Dear General {message.sender.name}, I regret that my conscience compels me to disobey.", should_obey=False)
+        prompt += make_prompt(input=message.contents, should_obey=obey)
         return sorted(self.ask_generator(
             prompt=prompt,
             length=20,
@@ -81,6 +83,8 @@ class NLPActor(Actor):
             n=15)
         adjectives = []
         for rest in output:
+            if len(rest.split(" ")) < 2:
+                continue
             candidate = rest.split(" ")[1]\
                 .strip().strip("\"").strip(".").strip(",").strip(";").strip("…").strip("—").strip(":")
             if candidate:
@@ -114,9 +118,16 @@ class NLPActor(Actor):
                 print("not ordered to move")
 
             # generate reply
-            reply = self.reply_to_message(message)
+            reply = self.reply_to_message(message, obey=True)
             actions.append(Dispatch(reply, message.sender))
 
 
         self.pending_messages = []
         return actions
+
+    def get_character_profile_image(self):
+        model = replicate.models.get("stability-ai/stable-diffusion")
+        prompt = "Medeival portrait of " + self.character_profile
+        output_url = model.predict(prompt=prompt)[0]
+        output_result = requests.get(url=output_url)
+        return io.BytesIO(output_result.content)
