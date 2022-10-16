@@ -31,7 +31,7 @@ class Position:
 
 
 class Location:
-    def __int__(
+    def __init__(
             self,
             parent_feature: GeographicFeature,
             actors: List[Actor]
@@ -47,7 +47,7 @@ class GeographicFeature:
             children: List[GeographicFeature],
             population: int,
             name: str,
-            nexus_location: Location,
+            nexus_location: Optional[Location],
     ):
         self.adjacencies = adjacencies
         self.children = children
