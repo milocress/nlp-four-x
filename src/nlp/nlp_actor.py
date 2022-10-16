@@ -3,9 +3,9 @@ from transformers import pipeline
 from diffusers import StableDiffusionPipeline
 import torch
 
-from src.actor import Actor, Message
+from src.actor import Actor, Message, Action, Movement, Occupy, Dispatch
+from src.nlp.gpt_order_parsing import is_movement_order, is_occupation_order
 from src.world import Location
-
 
 class NLPActor(Actor):
 
@@ -96,3 +96,27 @@ class NLPActor(Actor):
             repetitive_character_profile += f"{adjective}, "
         repetitive_character_profile += f" and {self.descriptors[-1]}."
         return self.summarize_character(repetitive_character_profile, 50, hint=f"Warrior General {self.name}.")
+
+    def get_actions(self) -> List[Action]:
+        print("actions from messages:")
+        print(self.pending_messages)
+        actions = []
+        for message in self.pending_messages:
+            is_motion_order = is_movement_order(message.contents)
+            occupation_order = is_occupation_order(message.contents)
+
+            if is_motion_order and not occupation_order:
+                print("ordered to move!")
+                actions.append(Movement(message.loc_map["#0"], 0))
+            elif occupation_order:
+                actions.append(Occupy())
+            else:
+                print("not ordered to move")
+
+            # generate reply
+            reply = self.reply_to_message(message)
+            actions.append(Dispatch(reply, message.sender))
+
+
+        self.pending_messages = []
+        return actions

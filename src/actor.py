@@ -37,9 +37,9 @@ class Movement(Action):
 
 
 class Dispatch(Action):
-    def __init__(self, message: Message):
-        self.message = message
-
+    def __init__(self, reply: str, recipient: Actor):
+        self.reply = reply
+        self.recipient = recipient
 
 class Actor:
     def __init__(self, location: Location, name: str):
@@ -71,7 +71,7 @@ class Actor:
     def move_with_troops(self, destination: Location, num_troops: int) -> None:
         raise NotImplementedError
 
-    def dispatch(self, message: Message) -> None:
+    def dispatch(self, reply: str, recipient: Actor) -> None:
         raise NotImplementedError
 
     def get_actions(self) -> List[Action]:
@@ -89,6 +89,7 @@ class Actor:
                 actions.append(Occupy())
             else:
                 print("not ordered to move")
+
         self.pending_messages = []
         return actions
 

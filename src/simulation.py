@@ -151,7 +151,8 @@ class Simulation:
                 self.occupied_tiles[actor.position.static_position] = True
                 self.board.get_hex_from_feature(actor.position.static_position.parent_feature).colour = pygame.Color('blue')
             if isinstance(action, Dispatch):
-                self.messages.add(action.message)
+                print("processing dispatch")
+                self.messages.add(self.get_message(actor, action.recipient, action.reply))
 
     def get_actors(self):
         return self.actors
