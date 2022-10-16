@@ -1,7 +1,8 @@
 from typing import List, Optional, Union
 from transformers import pipeline
 
-from src.world import Actor, Message, Action, Location
+from src.actor import Actor
+from src.world import Location
 
 
 class NLPActor(Actor):
