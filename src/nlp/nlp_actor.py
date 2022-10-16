@@ -128,6 +128,6 @@ class NLPActor(Actor):
     def get_character_profile_image(self):
         model = replicate.models.get("stability-ai/stable-diffusion")
         prompt = "Medeival portrait of " + self.character_profile
-        output_url = model.predict(prompt=prompt)
+        output_url = model.predict(prompt=prompt)[0]
         output_result = requests.get(url=output_url)
         return io.BytesIO(output_result.content)
