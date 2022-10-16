@@ -17,7 +17,7 @@ class NLPActor(Actor):
         super().__init__(location, name)
         self.descriptors = self.get_descriptors()
         self.character_profile = self.get_character_profile()
-        self.character_profile_image = self.get_character_profile_image()
+        self.character_profile_image, self.character_profile_image_url = self.get_character_profile_image()
 
     def ask_generator(self, prompt: str, length: int, hint: str = "", n: int = 1) -> Union[str, List[str]]:
         outs = self.generator(
@@ -130,4 +130,4 @@ class NLPActor(Actor):
         prompt = "Medeival portrait of " + self.character_profile
         output_url = model.predict(prompt=prompt)[0]
         output_result = requests.get(url=output_url)
-        return io.BytesIO(output_result.content)
+        return io.BytesIO(output_result.content), output_url
