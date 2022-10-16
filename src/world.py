@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import List, Optional
-
+from typing import List, Optional, Dict
+from src.nlp.gpt_order_parsing import is_movement_order
 
 class Adjacency:
     def __init__(
@@ -8,12 +8,10 @@ class Adjacency:
             source: Location,
             destination: Location,
             distance: float,
-            progress: Optional[float],
     ):
         self.source = source
         self.destination = destination
         self.distance = distance
-        self.progress = progress
 
 
 class Position:
@@ -34,11 +32,32 @@ class Location:
     def __init__(
             self,
             parent_feature: GeographicFeature,
-            actors: List[Actor]
+            actors: List[Actor],
+            name: str
     ):
         self.parent_feature = parent_feature
         self.actors = actors
+        self.location_estimates = {}
+        self.name = name
 
+    def estimate_loc_of_actor(self, actor: Actor):
+        # TODO implement for real
+        return actor.location
+
+        if actor in self.location_estimates:
+            return self.location_estimates[actor]
+        else:
+            return None
+
+    def update_location_estimate(self, actor: Actor, location: Location):
+        self.location_estimates[actor] = location
+
+    def is_nexus(self):
+        return self.parent_feature.nexus_location == self
+
+    def __lt__(self, other):
+        # arbitrary, should not be used
+        return self.parent_feature.name < other.parent_feature.name
 
 class GeographicFeature:
     def __init__(
@@ -58,6 +77,8 @@ class GeographicFeature:
     def set_adjacencies(self, adjacencies):
         self.adjacencies = adjacencies
 
+    def set_nexus_location(self, location):
+        self.nexus_location = location
 
 #actor file
 
@@ -68,14 +89,17 @@ class Message:
             destination: Location,
             sender: Actor,
             recipient: Actor,
+            arrival_time: int,
             contents: str,
+            loc_map: Dict[str, Location] = None
     ):
         self.source = source
         self.destination = destination
         self.sender = sender
         self.recipient = recipient
         self.contents = contents
-
+        self.arrival_time = arrival_time
+        self.loc_map = loc_map
 
 class Action:
     pass
@@ -95,10 +119,24 @@ class Dispatch(Action):
 class Actor:
     def __init__(self, location: Location, name: str):
         self.location = location
+        location.actors.append(self)
         self.name = name
+        self.pending_messages = []
+
+    def __str__(self):
+        return self.name
+
+    def receive_message(self, message: Message):
+        print("receiving message")
+        print(self.name)
+        self.pending_messages.append(message)
+        print(self.pending_messages)
 
     def move(self, destination: Location) -> None:
-        raise NotImplementedError
+        print("executing move")
+        self.location.actors.remove(self)
+        self.location = destination
+        destination.actors.append(self)
 
     def move_with_troops(self, destination: Location, num_troops: int) -> None:
         raise NotImplementedError
@@ -106,8 +144,19 @@ class Actor:
     def dispatch(self, message: Message) -> None:
         raise NotImplementedError
 
-    def get_actions(self, messages: [Message]) -> List[Action]:
-        raise NotImplementedError
+    def get_actions(self) -> List[Action]:
+        print("actions from messages:")
+        print(self.pending_messages)
+        actions = []
+        for message in self.pending_messages:
+            is_motion_order = is_movement_order(message.contents)
+            if is_motion_order:
+                print("ordered to move!")
+                actions.append(Movement(message.loc_map["#0"], 0))
+            else:
+                print("not ordered to move")
+        self.pending_messages = []
+        return actions
 
     def run_actions(self, actions: List[Action]):
         for action in actions:

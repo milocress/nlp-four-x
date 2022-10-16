@@ -7,8 +7,6 @@ from src.world import Actor, Message, Action, Location
 
 
 class NLPActor(Actor):
-    def get_actions(self, messages: [Message]) -> List[Action]:
-        pass
 
     def __init__(self, location: Location):
         self.generator = pipeline(task="text-generation", model="gpt2")
