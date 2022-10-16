@@ -1,45 +1,53 @@
+from typing import List
+
 import pygame
 
 from src.nlp.nlp_actor import NLPActor
+from src.shapes.actor_symbol import ActorSymbol
 from src.simulation import Simulation
 
 
-def renderActors(simulation: Simulation, game_surface):
-    actors = simulation.get_actors()
-    for actor in actors:
-        if isinstance(actor, NLPActor):
-            color = pygame.Color('red')
-        else:
-            color = pygame.Color('blue')
 
-        if actor.position.is_moving():
-            pass
-        else:
-            location = actor.position.static_position
-            feature = location.parent_feature
-            hex = simulation.board.get_hex_from_feature(feature)
+class Renderer:
+    def __init__(self, simulation):
+        self.game_surface = pygame.Surface((800, 800))
+        self.simulation = simulation
+        self.hexagons = simulation.board.get_hexagons()
 
-            pygame.draw.circle(game_surface, color, (hex.centre[0], hex.centre[1]), 5)  # DRAW CIRCLE
+        self.actor_symbols: List[ActorSymbol] = None
+        self.GetActorSymbols()
+
+    def GetActorSymbols(self):
+        actors = self.simulation.get_actors()
+
+        actor_symbols = []
+        for actor in actors:
+            actor_symbols.append(ActorSymbol(self.game_surface, actor, 8, True, self.simulation))
+
+        self.actor_symbols = actor_symbols
 
 
-def renderGameSurface(hexagons):
-    """Renders hexagons on the screen"""
-    game_surface = pygame.Surface((800, 800))
+    def Render(self):
+        self.renderGameSurface()
+        self.renderActors()
 
-    for hexagon in hexagons:
-        hexagon.render(game_surface)
+    def renderActors(self):
+        for actor_symbol in self.actor_symbols:
+            actor_symbol.render(self.simulation)
 
-    # draw borders around colliding hexagons and neighbours
-    mouse_pos = pygame.mouse.get_pos()
-    colliding_hexagons = [
-        hexagon for hexagon in hexagons if hexagon.collide_with_point(mouse_pos)
-    ]
-    for hexagon in colliding_hexagons:
-        # print(hexagon.game_coords)
-        for neighbour in hexagon.compute_neighbours(hexagons):
-            neighbour.render_highlight(game_surface, border_colour=(100, 100, 100))
-        hexagon.render_highlight(game_surface, border_colour=(0, 0, 0))
+    def renderGameSurface(self):
+        """Renders hexagons on the screen"""
 
-    # draw_state_box(game_surface, tile_text)
+        for hexagon in self.hexagons:
+            hexagon.render(self.game_surface)
 
-    return game_surface
+        # draw borders around colliding hexagons and neighbours
+        mouse_pos = pygame.mouse.get_pos()
+        colliding_hexagons = [
+            hexagon for hexagon in self.hexagons if hexagon.collide_with_point(mouse_pos)
+        ]
+
+        for hexagon in colliding_hexagons:
+            for neighbour in hexagon.compute_neighbours(self.hexagons):
+                neighbour.render_highlight(self.game_surface, border_colour=(100, 100, 100))
+            hexagon.render_highlight(self.game_surface, border_colour=(0, 0, 0))

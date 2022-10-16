@@ -12,13 +12,13 @@ import pygame_gui
 
 from src.board import Board
 
-
 # pylint: disable=no-member
 from src.nlp.nlp_actor import NLPActor
-from src.render import renderGameSurface, renderActors
+from src.render import Renderer
 from src.simulation import Simulation
 from src.ui import UI
 from src.world import GeographicFeature, Location, Adjacency
+
 
 def get_actor_list(actors):
     text = ""
@@ -28,7 +28,6 @@ def get_actor_list(actors):
 
 
 def main():
-
     # setup game board
     simulation = Simulation()
 
@@ -50,6 +49,9 @@ def main():
     ui = UI(manager)
     ui.set_actor_name_list(simulation.get_actors())
 
+    # rendering work
+    renderer = Renderer(simulation)
+
     # setup pygame loop
     pygame.init()
     clock = pygame.time.Clock()
@@ -63,15 +65,26 @@ def main():
                 terminated = True
             if event.type == pygame.MOUSEBUTTONUP:
                 mouse_pos = pygame.mouse.get_pos()
-                colliding_hexagons = [
-                    hexagon for hexagon in hexagons if hexagon.collide_with_point(mouse_pos)
-                ]
-                for hexagon in colliding_hexagons:
-                    print(hexagon.game_coords)
-                    feature = simulation.board.get_feature_from_hex(hexagon)
-                    tile_text = "name: " + feature.name + ", population: " + str(feature.population) + "<br>actors: " + get_actor_list(feature.nexus_location.actors)
 
+                colliding_actors = [actor_symbol for actor_symbol in renderer.actor_symbols if
+                                    actor_symbol.collide_with_point(mouse_pos)]
+                for colliding_actor in colliding_actors:
+                    print("actor clicked")
+                    tile_text = "name: " + colliding_actor.get_actor().name
                     ui.tile_text_box.set_text(tile_text)
+                    break
+
+                if len(colliding_actors) == 0:
+                    colliding_hexagons = [
+                        hexagon for hexagon in hexagons if hexagon.collide_with_point(mouse_pos)
+                    ]
+                    for hexagon in colliding_hexagons:
+                        print(hexagon.game_coords)
+                        feature = simulation.board.get_feature_from_hex(hexagon)
+                        tile_text = "name: " + feature.name + ", population: " + str(
+                            feature.population) + "<br>actors: " + get_actor_list(feature.nexus_location.actors)
+
+                        ui.tile_text_box.set_text(tile_text)
 
             ui.handleUIEvent(event, simulation)
             manager.process_events(event)
@@ -81,12 +94,10 @@ def main():
         for hexagon in hexagons:
             hexagon.update()
 
-        game_surface = renderGameSurface(hexagons)
-
-        renderActors(simulation, game_surface)
+        renderer.Render()
 
         screen.blit(background, (0, 0))
-        screen.blit(game_surface, (0, 0))
+        screen.blit(renderer.game_surface, (0, 0))
 
         manager.draw_ui(screen)
         pygame.display.flip()
