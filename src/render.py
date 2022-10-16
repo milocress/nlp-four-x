@@ -2,6 +2,7 @@ from typing import List
 
 import pygame
 
+from src.actor import Actor
 from src.nlp.nlp_actor import NLPActor
 from src.shapes.actor_symbol import ActorSymbol
 from src.simulation import Simulation

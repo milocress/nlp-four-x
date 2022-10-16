@@ -46,7 +46,7 @@ def main():
     background.fill(pygame.Color('lightskyblue3'))
 
     manager = pygame_gui.UIManager((1000, 900))
-    ui = UI(manager)
+    ui = UI(manager, screen)
     ui.set_actor_name_list(simulation.get_actors())
 
     # rendering work
@@ -70,11 +70,18 @@ def main():
                                     actor_symbol.collide_with_point(mouse_pos)]
                 for colliding_actor in colliding_actors:
                     print("actor clicked")
-                    tile_text = "name: " + colliding_actor.get_actor().name
+                    actor : NLPActor = colliding_actor.get_actor()
+                    if isinstance(actor, NLPActor):
+                        tile_text = "name: " + actor.name + "<br> desc: " + actor.character_profile
+                    else:
+                        tile_text = "name: " + actor.name
+
                     ui.tile_text_box.set_text(tile_text)
+                    ui.setPortait(actor)
                     break
 
                 if len(colliding_actors) == 0:
+                    ui.cancelPortrait()
                     colliding_hexagons = [
                         hexagon for hexagon in hexagons if hexagon.collide_with_point(mouse_pos)
                     ]
@@ -99,7 +106,7 @@ def main():
         screen.blit(background, (0, 0))
         screen.blit(renderer.game_surface, (0, 0))
 
-        manager.draw_ui(screen)
+        ui.render()
         pygame.display.flip()
 
         clock.tick(50)

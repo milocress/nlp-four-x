@@ -3,7 +3,9 @@ from typing import List
 import pygame
 import pygame_gui
 
+from src.actor import Actor
 from src.events import RECV_MESSAGE_EVENT
+from src.nlp.nlp_actor import NLPActor
 from src.simulation import Simulation
 
 
@@ -11,7 +13,7 @@ class Actors(object):
     pass
 
 class UI:
-    def __init__(self, manager):
+    def __init__(self, manager, screen):
         self.advance_day_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((825, 20), (150, 50)),
                                                                text='Advance Day',
                                                                manager=manager)
@@ -33,10 +35,13 @@ class UI:
                                                          text='Send Message',
                                                          manager=manager)
 
-        self.inbox = pygame_gui.elements.ui_text_box.UITextBox("",
-                                                                       relative_rect=pygame.Rect((50, 810), (800, 80)),
+        self.inbox = pygame_gui.elements.ui_text_box.UITextBox("", relative_rect=pygame.Rect((50, 810), (800, 80)),
                                                                        manager=manager)
 
+        self.render_portrait = False
+        self.portrait = None
+        self.screen = screen
+        self.manager = manager
 
     def handleUIEvent(self, event, simulation: Simulation):
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
@@ -66,3 +71,20 @@ class UI:
 
     def set_actor_name_list(self, actors: List[Actors]):
         self.recipient_select.set_item_list(self.actor_name_list(actors))
+
+    def cancelPortrait(self):
+        self.render_portrait = False
+
+    def setPortait(self, actor: Actor):
+        if isinstance(actor, NLPActor):
+            self.render_portrait = True
+            image = pygame.image.load(actor.character_profile_image)
+            DEFAULT_IMAGE_SIZE = (150, 150)
+
+            # Scale the image to your needed size
+            self.portrait = pygame.transform.scale(image, DEFAULT_IMAGE_SIZE)
+
+    def render(self):
+        self.manager.draw_ui(self.screen)
+        if self.render_portrait:
+            self.screen.blit(self.portrait, (800, 250))
