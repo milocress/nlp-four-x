@@ -1,5 +1,6 @@
 from nlp_actor import NLPActor
-from src.world import Location, GeographicFeature, Actor, Message
+from src.actor import Actor, Message
+from src.world import Location, GeographicFeature
 
 homeland = Location(
     parent_feature=GeographicFeature(
@@ -9,16 +10,18 @@ homeland = Location(
         population=190,
         nexus_location=None
     ),
-    actors=[]
+    actors=[],
+    name="Mordor"
 )
 
-my_actor = NLPActor(homeland)
+my_actors = [NLPActor(homeland) for _ in range(10)]
 
 me = Actor(homeland, "Strackus")
 
 message = Message(
-    homeland, homeland, me, my_actor,
-    contents="Dear Bjorn,\nPlease aid me in the coming war.\nSincerely, Strackus")
+    homeland, homeland, me, my_actors[0],
+    contents="stay put",
+    arrival_time=0)
 
 # print(my_actor.bio)
 #
@@ -26,8 +29,14 @@ message = Message(
 
 # print(response.contents)
 
-print(my_actor.name)
+print("Names")
+print([my_actor.name for my_actor in my_actors])
 
-print(my_actor.descriptors)
+print("Adjectives")
+print([my_actor.descriptors for my_actor in my_actors])
 
-print(my_actor.character_profile)
+print("Profiles")
+print([my_actor.character_profile for my_actor in my_actors])
+
+print("Replies")
+print([my_actor.reply_to_message(message) for my_actor in my_actors])
