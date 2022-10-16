@@ -116,7 +116,7 @@ class NLPActor(Actor):
                 print("not ordered to move")
 
             # generate reply
-            reply = self.reply_to_message(message)
+            reply = self.reply_to_message(message, obey=True)
             actions.append(Dispatch(reply, message.sender))
 
 
