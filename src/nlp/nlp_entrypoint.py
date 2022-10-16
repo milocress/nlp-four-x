@@ -3,7 +3,7 @@ from src.world import Location, GeographicFeature, Actor, Message
 
 homeland = Location(
     parent_feature=GeographicFeature(
-        name="Snorsgard",
+        name="Moria",
         adjacencies=[],
         children=[],
         population=190,

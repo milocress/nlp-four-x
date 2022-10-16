@@ -1,5 +1,7 @@
-from typing import List, Optional, Union
+from typing import List, Union
 from transformers import pipeline
+from diffusers import StableDiffusionPipeline
+import torch
 
 from src.world import Actor, Message, Action, Location
 
@@ -9,10 +11,14 @@ class NLPActor(Actor):
         pass
 
     def __init__(self, location: Location):
-        self.generator = pipeline(task="text-generation")
+        self.generator = pipeline(task="text-generation", model="gpt2")
         self.birth_location = location
         name = self.create_name()
         super().__init__(location, name)
+        self.pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_type=torch.float16,
+                                                            revision="fp16")
+        prompt = "a photo of an astronaut riding a horse on mars"
+        image = self.pipe(prompt).images[0]
         self.descriptors = self.get_descriptors()
         self.character_profile = self.get_character_profile()
 
@@ -20,7 +26,7 @@ class NLPActor(Actor):
         outs = self.generator(
             prompt + hint,
             max_length=length,
-            early_stopping=True,
+            early_stopping=False,
             do_sample=True,
             top_k=0,
             num_return_sequences=n,
@@ -32,9 +38,9 @@ class NLPActor(Actor):
         else:
             return rets
 
-    def generate_summary(self, text: str, length: int, hint : str = "") -> str:
+    def summarize_character(self, text: str, length: int, hint: str = "") -> str:
         return self.ask_generator(
-            prompt=f"Here is a text and a short summary.\n#Text:{text}\n#Short Summary:",
+            prompt=f"Here is text and its summary:\n#Text:{text}\n#Summary:",
             length=length,
             hint=hint
         ).split("\n")[0]
@@ -43,29 +49,30 @@ class NLPActor(Actor):
         output = self.ask_generator(
             prompt=f"The name of the warrior general from {self.birth_location.parent_feature.name} was \"",
             length=20)
+        output = output.replace(".", "\"")
+        output = output.replace(",", "\"")
+        output = output.replace(":", "\"")
         return output.split("\"")[0]
 
     def get_descriptors(self) -> List[str]:
         output = self.ask_generator(
-            prompt=f"The three best words that describe the warrior general {self.name} are wise, brave, and",
-            length=30,
-            n=10)
+            prompt=f"The three best words that describe {self.name} the warrior chief are wise, brave, and",
+            length=25,
+            n=15)
         adjectives = []
         for rest in output:
-            rest = rest.replace("!", ".")
-            rest = rest.replace(";", ".")
-            rest = rest.replace(",", ".")
-            rest = rest.replace(":", ".")
-            rest = rest.replace("--", ".")
-            rest = rest.replace("\n", ".")
-            rest = rest.replace("?", ".")
-            rest = rest.replace("—", ".")
-            adjectives.append(rest.split(".")[0].strip().strip("_"))
+            candidate = rest.split(" ")[1]\
+                .strip().strip("\"").strip(".").strip(",").strip(";").strip("…").strip("—").strip(":")
+            if candidate:
+                if candidate in adjectives:
+                    continue
+                adjectives.append(candidate)
 
-        return adjectives
+        return sorted(adjectives, key=lambda x: len(x))[2:-2]
 
     def get_character_profile(self):
         repetitive_character_profile = f"{self.name} is "
-        for adjective in self.descriptors:
+        for adjective in self.descriptors[:-1]:
             repetitive_character_profile += f"{adjective}, "
-        return self.generate_summary(repetitive_character_profile, 200, hint=self.name)
+        repetitive_character_profile += f" and {self.descriptors[-1]}."
+        return self.summarize_character(repetitive_character_profile, 100, hint=f"Warrior General {self.name}.")
