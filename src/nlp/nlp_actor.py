@@ -3,7 +3,7 @@ from transformers import pipeline
 from diffusers import StableDiffusionPipeline
 import torch
 
-from src.actor import Actor
+from src.actor import Actor, Message
 from src.world import Location
 
 
@@ -14,18 +14,14 @@ class NLPActor(Actor):
         self.birth_location = location
         name = self.create_name()
         super().__init__(location, name)
-        self.pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_type=torch.float16,
-                                                            revision="fp16")
-        prompt = "a photo of an astronaut riding a horse on mars"
-        image = self.pipe(prompt).images[0]
         self.descriptors = self.get_descriptors()
         self.character_profile = self.get_character_profile()
 
     def ask_generator(self, prompt: str, length: int, hint: str = "", n: int = 1) -> Union[str, List[str]]:
         outs = self.generator(
             prompt + hint,
-            max_length=length,
-            early_stopping=False,
+            max_new_tokens=length,
+            early_stopping=True,
             do_sample=True,
             top_k=0,
             num_return_sequences=n,
@@ -38,16 +34,41 @@ class NLPActor(Actor):
             return rets
 
     def summarize_character(self, text: str, length: int, hint: str = "") -> str:
-        return self.ask_generator(
-            prompt=f"Here is text and its summary:\n#Text:{text}\n#Summary:",
+        def make_prompt(input, output=""):
+            return f"\n#Text:{input}\n#Summary:{output}"
+        prompt = "Here is text and its summary\n"
+        prompt += make_prompt("Valinor is smart, kind, reckless, and thoughtful.", "Valinor. The wisest of us, he led us through the hardest perils in our kingdom with only his wit and bravado.")
+        prompt += make_prompt("Bjork is ruthless, evil, cunning, and brash.", "Bjorn. A dangerous foe, he destroys anything that displeases him, leaving his enemies only the dust for company.")
+        prompt += make_prompt("Arnos is courageous, clumsy, loyal, and gruff.", "Arnos. When his friends are in danger, nothing stands in his way. Though he appears rough on the outside, he bravely opens up to his friends.")
+        prompt += make_prompt(input=text)
+        return sorted(self.ask_generator(
+            prompt=prompt,
             length=length,
-            hint=hint
-        ).split("\n")[0]
+            hint=hint,
+            n=4
+        ), key=len)[-2].split("\n")[0]
+
+    def reply_to_message(self, message: Message) -> str:
+        def make_prompt(input, output=""):
+            return f"\n#Message:{input}\n#Response from {self.name}:{output}"
+        prompt = f"Context: {self.character_profile}"
+        prompt += "Here are messages and their respective responses\n"
+        prompt += make_prompt("Go attack #1", f"Dear General {message.sender.name}, it would be my honor to aid your forces. I will obey your order with duty and honor.")
+        prompt += make_prompt("Stay put", f"Dear General {message.sender.name}, I obey your commands as if they were the last breath of a dying brother.")
+        prompt += make_prompt("Go and attack #1", f"Dear General {message.sender.name}, I regret that my conscience compels me to disobey.")
+        prompt += make_prompt(input=message.contents)
+        return sorted(self.ask_generator(
+            prompt=prompt,
+            length=20,
+            hint=f"Dear General {message.sender.name},",
+            n=4
+        ), key=len)[-2].split("\n")[0]
+
 
     def create_name(self) -> str:
         output = self.ask_generator(
             prompt=f"The name of the warrior general from {self.birth_location.parent_feature.name} was \"",
-            length=20)
+            length=3)
         output = output.replace(".", "\"")
         output = output.replace(",", "\"")
         output = output.replace(":", "\"")
@@ -56,7 +77,7 @@ class NLPActor(Actor):
     def get_descriptors(self) -> List[str]:
         output = self.ask_generator(
             prompt=f"The three best words that describe {self.name} the warrior chief are wise, brave, and",
-            length=25,
+            length=3,
             n=15)
         adjectives = []
         for rest in output:
@@ -74,4 +95,4 @@ class NLPActor(Actor):
         for adjective in self.descriptors[:-1]:
             repetitive_character_profile += f"{adjective}, "
         repetitive_character_profile += f" and {self.descriptors[-1]}."
-        return self.summarize_character(repetitive_character_profile, 100, hint=f"Warrior General {self.name}.")
+        return self.summarize_character(repetitive_character_profile, 50, hint=f"Warrior General {self.name}.")
