@@ -39,4 +39,4 @@ print("Profiles")
 print([my_actor.character_profile for my_actor in my_actors])
 
 print("Replies")
-print([my_actor.reply_to_message(message) for my_actor in my_actors])
+print([my_actor.reply_to_message(message, obey=False) for my_actor in my_actors])
