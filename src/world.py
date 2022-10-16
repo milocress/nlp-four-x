@@ -8,12 +8,10 @@ class Adjacency:
             source: Location,
             destination: Location,
             distance: float,
-            progress: Optional[float],
     ):
         self.source = source
         self.destination = destination
         self.distance = distance
-        self.progress = progress
 
 
 class Position:
@@ -38,7 +36,26 @@ class Location:
     ):
         self.parent_feature = parent_feature
         self.actors = actors
+        self.location_estimates = {}
 
+    def estimate_loc_of_actor(self, actor: Actor):
+        # TODO implement for real
+        return actor.location
+
+        if actor in self.location_estimates:
+            return self.location_estimates[actor]
+        else:
+            return None
+
+    def update_location_estimate(self, actor: Actor, location: Location):
+        self.location_estimates[actor] = location
+
+    def is_nexus(self):
+        return self.parent_feature.nexus_location == self
+
+    def __lt__(self, other):
+        # arbitrary, should not be used
+        return self.parent_feature.name < other.parent_feature.name
 
 class GeographicFeature:
     def __init__(
@@ -58,6 +75,8 @@ class GeographicFeature:
     def set_adjacencies(self, adjacencies):
         self.adjacencies = adjacencies
 
+    def set_nexus_location(self, location):
+        self.nexus_location = location
 
 #actor file
 
@@ -68,6 +87,7 @@ class Message:
             destination: Location,
             sender: Actor,
             recipient: Actor,
+            arrival_time: int,
             contents: str,
     ):
         self.source = source
@@ -75,6 +95,7 @@ class Message:
         self.sender = sender
         self.recipient = recipient
         self.contents = contents
+        self.arrival_time = arrival_time
 
 
 class Action:
@@ -95,7 +116,15 @@ class Dispatch(Action):
 class Actor:
     def __init__(self, location: Location, name: str):
         self.location = location
+        location.actors.append(self)
         self.name = name
+        self.pending_messages = []
+
+    def __str__(self):
+        return self.name
+
+    def receive_message(self, message: Message):
+        self.pending_messages.append(message)
 
     def move(self, destination: Location) -> None:
         raise NotImplementedError
@@ -106,7 +135,7 @@ class Actor:
     def dispatch(self, message: Message) -> None:
         raise NotImplementedError
 
-    def get_actions(self, messages: [Message]) -> List[Action]:
+    def get_actions(self, messages: List[Message]) -> List[Action]:
         raise NotImplementedError
 
     def run_actions(self, actions: List[Action]):

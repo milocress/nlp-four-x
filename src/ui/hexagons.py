@@ -26,7 +26,7 @@ def get_random_colour(min_=150, max_=255) -> Tuple[int, ...]:
     return tuple(random.choices(list(range(min_, max_)), k=3))
 
 
-def init_hexagons(gameboard, num_x=10, num_y=10, flat_top=False) -> List[HexagonTile]:
+def init_hexagons(coord_to_hex, num_x=10, num_y=10, flat_top=False) -> List[HexagonTile]:
     """Creates a hexaogonal tile map of size num_x * num_y"""
     # pylint: disable=invalid-name
     leftmost_hexagon = create_hexagon(None, position=(-50, -50), flat_top=flat_top)
@@ -51,9 +51,8 @@ def init_hexagons(gameboard, num_x=10, num_y=10, flat_top=False) -> List[Hexagon
             else:
                 position = (x + hexagon.minimal_radius * 2, y)
             hexagon = create_hexagon((y_coord, i), position, flat_top=flat_top)
-            if y_coord not in gameboard:
-                gameboard[y_coord] = {}
-            gameboard[y_coord][i] = hexagon
+
+            coord_to_hex[(y_coord, i)] = hexagon
             hexagons.append(hexagon)
 
     return hexagons
