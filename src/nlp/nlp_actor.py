@@ -2,6 +2,7 @@ from typing import List, Union
 from transformers import pipeline
 from diffusers import StableDiffusionPipeline
 import torch
+import replicate
 
 from src.actor import Actor, Message, Action, Movement, Occupy, Dispatch
 from src.nlp.gpt_order_parsing import is_movement_order, is_occupation_order
@@ -16,6 +17,7 @@ class NLPActor(Actor):
         super().__init__(location, name)
         self.descriptors = self.get_descriptors()
         self.character_profile = self.get_character_profile()
+        self.character_profile_image = self.get_character_profile_image()
 
     def ask_generator(self, prompt: str, length: int, hint: str = "", n: int = 1) -> Union[str, List[str]]:
         outs = self.generator(
@@ -122,3 +124,9 @@ class NLPActor(Actor):
 
         self.pending_messages = []
         return actions
+
+    def get_character_profile_image(self):
+        model = replicate.models.get("stability-ai/stable-diffusion")
+        prompt = "Medeival portrait of " + self.character_profile
+        output = model.predict(prompt=prompt)
+        return output
