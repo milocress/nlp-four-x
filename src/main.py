@@ -61,6 +61,9 @@ def get_actor_list(actors):
         text += str(actor) + ", <br>"
     return text
 
+def actor_name_list(actors):
+    return [actor.name for actor in actors]
+
 def main():
 
     # setup game board
@@ -96,6 +99,15 @@ def main():
     command_entry = pygame_gui.elements.ui_text_entry_line.UITextEntryLine(relative_rect=pygame.Rect((825, 300), (150, 200)),
                                                                             manager=manager)
 
+    recipient_select = pygame_gui.elements.ui_selection_list.UISelectionList(pygame.Rect((825, 520), (150, 50)),
+                                                                             actor_name_list(board.actors),
+                                                                             manager=manager)
+
+    send_message = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((825, 590), (150, 50)),
+                                                text='Send Message',
+                                                manager=manager)
+
+
     # setup pygame loop
     pygame.init()
     clock = pygame.time.Clock()
@@ -122,6 +134,10 @@ def main():
                 if event.ui_element == advance_day_button:
                     print('Advancing Day')
                     board.simulate_time_step()
+                if event.ui_element == send_message:
+                    print("Send Message")
+
+                    board.add_player_message(recipient_select.get_single_selection(), command_entry.text)
 
             manager.process_events(event)
 

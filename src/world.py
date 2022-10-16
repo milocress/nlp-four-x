@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import List, Optional
-
+from typing import List, Optional, Dict
+from src.nlp.gpt_order_parsing import is_movement_order
 
 class Adjacency:
     def __init__(
@@ -32,11 +32,13 @@ class Location:
     def __init__(
             self,
             parent_feature: GeographicFeature,
-            actors: List[Actor]
+            actors: List[Actor],
+            name: str
     ):
         self.parent_feature = parent_feature
         self.actors = actors
         self.location_estimates = {}
+        self.name = name
 
     def estimate_loc_of_actor(self, actor: Actor):
         # TODO implement for real
@@ -89,6 +91,7 @@ class Message:
             recipient: Actor,
             arrival_time: int,
             contents: str,
+            loc_map: Dict[str, Location] = None
     ):
         self.source = source
         self.destination = destination
@@ -96,7 +99,7 @@ class Message:
         self.recipient = recipient
         self.contents = contents
         self.arrival_time = arrival_time
-
+        self.loc_map = loc_map
 
 class Action:
     pass
@@ -124,10 +127,16 @@ class Actor:
         return self.name
 
     def receive_message(self, message: Message):
+        print("receiving message")
+        print(self.name)
         self.pending_messages.append(message)
+        print(self.pending_messages)
 
     def move(self, destination: Location) -> None:
-        raise NotImplementedError
+        print("executing move")
+        self.location.actors.remove(self)
+        self.location = destination
+        destination.actors.append(self)
 
     def move_with_troops(self, destination: Location, num_troops: int) -> None:
         raise NotImplementedError
@@ -135,8 +144,19 @@ class Actor:
     def dispatch(self, message: Message) -> None:
         raise NotImplementedError
 
-    def get_actions(self, messages: List[Message]) -> List[Action]:
-        raise NotImplementedError
+    def get_actions(self) -> List[Action]:
+        print("actions from messages:")
+        print(self.pending_messages)
+        actions = []
+        for message in self.pending_messages:
+            is_motion_order = is_movement_order(message.contents)
+            if is_motion_order:
+                print("ordered to move!")
+                actions.append(Movement(message.loc_map["#0"], 0))
+            else:
+                print("not ordered to move")
+        self.pending_messages = []
+        return actions
 
     def run_actions(self, actions: List[Action]):
         for action in actions:

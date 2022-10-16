@@ -17,6 +17,8 @@ class Board:
     ):
         self.locations = []
         self.features = []
+        self.name_to_actor = {}
+        self.name_to_loc = {}
         self.coord_to_hex: Dict[Tuple[int, int], HexagonTile] = {}
         self.coord_to_feature: Dict[Tuple[int, int], GeographicFeature] = {}
         self.feature_to_coord: Dict[GeographicFeature, Tuple[int, int]] = {}
@@ -32,8 +34,11 @@ class Board:
         self.player = Actor(self.coord_to_feature[(5,5)].nexus_location, "player")
         self.actors.append(self.player)
 
-        self.actors.append(NLPActor(self.coord_to_feature[(6,6)].nexus_location))
 
+        actor1 = NLPActor(self.coord_to_feature[(6,6)].nexus_location)
+        self.actors.append(actor1)
+
+        self.name_to_actor[actor1.name] = actor1
 
     def gen_hex_world(self, num_x, num_y):
 
@@ -45,7 +50,10 @@ class Board:
                 self.feature_to_coord[feature] = (i, j)
                 self.features.append(feature)
 
-                location = Location(feature, [])
+                loc_name = str(i) + str(j) + "l"
+                location = Location(feature, [], loc_name)
+                self.name_to_loc[loc_name] = location
+
                 self.locations.append(location)
 
                 feature.set_nexus_location(location)
@@ -59,18 +67,18 @@ class Board:
                 if hexagon.game_coords is not None:
                     i, j = hexagon.game_coords
                     neighbor_feature = self.coord_to_feature[(i,j)]
-                    adjs.append(Adjacency(feature.nexus_location, neighbor_feature.nexus_location, 2))
+                    adjs.append(Adjacency(feature.nexus_location, neighbor_feature.nexus_location, 1))
             feature.set_adjacencies(adjs)
 
     def simulate_time_step(self):
 
-        if self.time == 1:
-            print("adding message")
-            npc = self.actors[1]
-
-            message = self.get_message(self.player, npc, "test message")
-
-            self.messages.add(message)
+        # if self.time == 1:
+        #     print("adding message")
+        #     npc = self.actors[1]
+        #
+        #     message = self.get_message(self.player, npc, "test message")
+        #
+        #     self.messages.add(message)
 
 
         # handle messages
@@ -84,6 +92,7 @@ class Board:
                 if recipient_loc == message.destination:
                     # message has arrived:
                     print("recipient gets message!!")
+                    print(message.contents)
                     message.recipient.receive_message(message)
                 else:
                     message.source = message.destination
@@ -98,7 +107,7 @@ class Board:
         # simulate actors
 
         for actor in self.actors:
-            actor.get_actions(actor.pending_messages)
+           actor.run_actions(actor.get_actions())
 
         self.time += 1
 
@@ -179,8 +188,33 @@ class Board:
 
         print(self.feature_to_coord[step1.parent_feature])
 
-    def get_message(self, source: Actor, recipient: Actor, contents: str) -> Message:
+    def get_message(self, source: Actor, recipient: Actor, contents: str, loc_map=None) -> Message:
         curr_loc = source.location
         final_dest_est = curr_loc.estimate_loc_of_actor(recipient)
         dist, first_step = self.get_first_step(curr_loc, final_dest_est)
-        return Message(curr_loc, first_step, source, recipient, self.time + dist, contents)
+        return Message(curr_loc, first_step, source, recipient, self.time + dist, contents, loc_map)
+
+    def add_player_message(self, recipient: str, text: str):
+
+        loc_map = {}
+        loc_refs = 0
+        print(self.name_to_loc)
+        for loc_name in self.name_to_loc:
+            if loc_name in text:
+                print("location in player message")
+                tag = "#" + str(loc_refs)
+                text = text.replace(loc_name, tag)
+                loc_refs += 1
+                loc_map[tag] = self.name_to_loc[loc_name]
+
+
+        print(recipient)
+        print(self.name_to_actor)
+
+        if recipient in self.name_to_actor:
+            recipient_actor = self.name_to_actor[recipient]
+        else:
+            print("sending to unknown actor")
+            print(recipient)
+
+        self.messages.add(self.get_message(self.player, recipient_actor, text, loc_map))
